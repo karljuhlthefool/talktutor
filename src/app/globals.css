@@ -1,26 +1,241 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── shadcn semantic variables (dark-only: all values live here permanently) ── */
+  --radius: 0.75rem;
+
+  --background: oklch(0.09 0.008 264);
+  --foreground: oklch(0.96 0.004 264);
+
+  --card: oklch(0.14 0.01 264);
+  --card-foreground: oklch(0.96 0.004 264);
+
+  --popover: oklch(0.17 0.01 264);
+  --popover-foreground: oklch(0.96 0.004 264);
+
+  --primary: oklch(0.65 0.18 255);
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.28 0.01 264);
+  --secondary-foreground: oklch(0.96 0.004 264);
+
+  --muted: oklch(0.17 0.01 264);
+  --muted-foreground: oklch(0.6 0.01 264);
+
+  --accent: oklch(0.22 0.01 264);
+  --accent-foreground: oklch(0.96 0.004 264);
+
+  --destructive: oklch(0.7 0.18 20);
+  --destructive-foreground: oklch(1 0 0);
+
+  --border: oklch(0.28 0.01 264);
+  --input: oklch(0.17 0.01 264);
+  --ring: oklch(0.65 0.18 255);
+
+  /* ── Custom app variables ── */
+  --surface-0: #08080c;
+  --surface-1: #131318;
+  --surface-2: #1d1d26;
+  --surface-3: #30303f;
+
+  --text-primary: #f2f2f4;
+  --text-secondary: #8888a0;
+  --text-tertiary: #55556a;
+
+  --brand: #4d8eff;
+  --brand-hover: #6ba3ff;
+  --brand-soft: rgba(77, 142, 255, 0.1);
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar (subtle) */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+/* Remove default input styles on mobile */
+input, textarea, button {
+  font-family: inherit;
+}
+
+/* Prevent zoom on input focus (iOS) */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+textarea {
+  font-size: 16px;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    var(--border) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Dot typing animation */
+@keyframes dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-dot {
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Message slide-in */
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msg-in {
+  animation: msg-in 0.2s ease-out forwards;
+}
+
+/* Button press feedback */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Fade in */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fade-in 0.15s ease forwards;
+}
+
+/* Slide up from bottom */
+@keyframes slide-up-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in and slide up */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in-up 0.2s ease-out forwards;
+}
+
+/* Pulse ring */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
 }
