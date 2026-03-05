@@ -5,23 +5,27 @@ import { randomBytes } from 'crypto';
 
 export interface InvitedUser {
   id: string;
-  email: string;
-  name: string;
+  email: string | null;
+  name: string | null;
   inviteToken: string | null;
   invitedBy: string | null;
   invitedAt: Date;
   acceptedAt: Date | null;
+  isGeneric: boolean;
+  claimedAt: Date | null;
 }
 
 function rowToInvitedUser(row: Record<string, unknown>): InvitedUser {
   return {
     id: row.id as string,
-    email: row.email as string,
-    name: row.name as string,
+    email: row.email as string | null,
+    name: row.name as string | null,
     inviteToken: row.invite_token as string | null,
     invitedBy: row.invited_by as string | null,
     invitedAt: new Date(row.invited_at as string),
     acceptedAt: row.accepted_at ? new Date(row.accepted_at as string) : null,
+    isGeneric: row.is_generic as boolean,
+    claimedAt: row.claimed_at ? new Date(row.claimed_at as string) : null,
   };
 }
 
@@ -54,7 +58,7 @@ export async function isEmailWhitelisted(email: string): Promise<boolean> {
 }
 
 /**
- * Add a new invited user to the whitelist
+ * Add a new invited user to the whitelist (known email/name)
  * Returns the invite token that can be used to create an invite link
  */
 export async function inviteUser(
@@ -91,6 +95,34 @@ export async function inviteUser(
       name,
       invite_token: inviteToken,
       invited_by: invitedBy || null,
+      is_generic: false,
+    });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, inviteToken };
+}
+
+/**
+ * Create a generic invite link (no email/name required upfront)
+ * Recipient will enter their own details when they visit the link
+ */
+export async function createGenericInvite(
+  invitedBy?: string
+): Promise<{ success: boolean; inviteToken?: string; error?: string }> {
+  const inviteToken = generateInviteToken();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabaseAdmin as any)
+    .from('invited_users')
+    .insert({
+      email: null,
+      name: null,
+      invite_token: inviteToken,
+      invited_by: invitedBy || null,
+      is_generic: true,
     });
 
   if (error) {
@@ -102,6 +134,7 @@ export async function inviteUser(
 
 /**
  * Get invited user by token (for invite link flow)
+ * Returns null if token not found
  */
 export async function getInvitedUserByToken(token: string): Promise<InvitedUser | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,6 +149,67 @@ export async function getInvitedUserByToken(token: string): Promise<InvitedUser 
   }
 
   return rowToInvitedUser(data);
+}
+
+/**
+ * Claim a generic invite with user's email and name
+ * This is called when a user fills out the form on a generic invite link
+ */
+export async function claimGenericInvite(
+  token: string,
+  email: string,
+  name: string
+): Promise<{ success: boolean; error?: string }> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // First check if this token is valid and is a generic invite
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: invite, error: fetchError } = await (supabaseAdmin as any)
+    .from('invited_users')
+    .select('id, is_generic, claimed_at')
+    .eq('invite_token', token)
+    .maybeSingle();
+
+  if (fetchError || !invite) {
+    return { success: false, error: 'Invalid invite link' };
+  }
+
+  if (!invite.is_generic) {
+    return { success: false, error: 'This invite is not a generic invite' };
+  }
+
+  if (invite.claimed_at) {
+    return { success: false, error: 'This invite link has already been used' };
+  }
+
+  // Check if email is already in the system
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existingUser } = await (supabaseAdmin as any)
+    .from('invited_users')
+    .select('id')
+    .eq('email', normalizedEmail)
+    .maybeSingle();
+
+  if (existingUser) {
+    return { success: false, error: 'This email is already registered. Please log in instead.' };
+  }
+
+  // Claim the invite by updating email, name, and claimed_at
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: updateError } = await (supabaseAdmin as any)
+    .from('invited_users')
+    .update({
+      email: normalizedEmail,
+      name,
+      claimed_at: new Date().toISOString(),
+    })
+    .eq('id', invite.id);
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  return { success: true };
 }
 
 /**
@@ -153,12 +247,12 @@ export async function getAllInvitedUsers(): Promise<InvitedUser[]> {
 /**
  * Remove user from whitelist
  */
-export async function removeInvitedUser(email: string): Promise<{ success: boolean; error?: string }> {
+export async function removeInvitedUser(id: string): Promise<{ success: boolean; error?: string }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabaseAdmin as any)
     .from('invited_users')
     .delete()
-    .eq('email', email.toLowerCase().trim());
+    .eq('id', id);
 
   if (error) {
     return { success: false, error: error.message };

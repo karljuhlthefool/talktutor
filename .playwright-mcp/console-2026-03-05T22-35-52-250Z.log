@@ -1,0 +1,1 @@
+[   21933ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://vshxqpebbylbhaliddef.supabase.co/auth/v1/otp?redirect_to=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Fcallback:0

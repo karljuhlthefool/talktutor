@@ -55,7 +55,7 @@ export default function DictionaryPage() {
 
   if (selectedEntry) {
     return (
-      <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6 animate-in">
+      <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6 md:py-8 md:max-w-2xl md:mx-auto animate-in">
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => setSelectedEntry(null)}
@@ -121,7 +121,7 @@ export default function DictionaryPage() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6">
+    <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6 md:py-8 md:max-w-2xl md:mx-auto">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-semibold tracking-tight">Dictionary</h1>
         <span className="text-[13px] text-muted-foreground tabular-nums">{entries.length} words</span>

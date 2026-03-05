@@ -7,6 +7,7 @@ import { SCENARIOS, type TranscriptEntry, type Correction } from '@/lib/types';
 import { getTrialState, startTrial, endTrial } from '@/lib/trial';
 import { TrialExpiredModal } from './trial-expired-modal';
 import { AudioVisualizer } from './audio-visualizer';
+import { useGeminiLive } from '@/lib/use-gemini-live';
 
 interface VoiceCallProps {
   onEnd: (data: {
@@ -36,6 +37,29 @@ export function VoiceCall({ onEnd }: VoiceCallProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  const geminiLive = useGeminiLive({
+    onTranscript: (text, role) => {
+      setTranscript((prev) => [
+        ...prev,
+        { role, content: text, timestamp: new Date().toISOString() },
+      ]);
+    },
+    onError: (err) => {
+      console.error('Gemini Live error:', err);
+      setError('connection-lost');
+      setStatus('idle');
+    },
+    onStatusChange: (hookStatus) => {
+      if (hookStatus === 'connected') {
+        setStatus('active');
+        setDuration(0);
+      } else if (hookStatus === 'disconnected') {
+        setStatus((prev) => (prev === 'connecting' ? 'idle' : prev));
+      }
+    },
+  });
 
   // Format duration as mm:ss
   const formatDuration = (seconds: number) => {
@@ -84,70 +108,42 @@ export function VoiceCall({ onEnd }: VoiceCallProps) {
     };
   }, [status]);
 
-  // Initialize audio context for visualization
-  useEffect(() => {
-    if (status === 'active') {
-      try {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-          const audioContext = new AudioContext();
-          audioContextRef.current = audioContext;
-
-          const analyser = audioContext.createAnalyser();
-          const source = audioContext.createMediaStreamSource(stream);
-          source.connect(analyser);
-          analyser.fftSize = 256;
-          analyserRef.current = analyser;
-        });
-      } catch (err) {
-        console.error('Failed to get microphone:', err);
-      }
-    }
-
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      if (analyserRef.current) {
-        analyserRef.current = null;
-      }
-    };
-  }, [status]);
-
   const handleStartCall = async () => {
     setError(null);
     startTrial();
-
     setStatus('connecting');
-    setShowScenarioPicker(false);
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
 
-      // Initialize audio context
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
 
+      // Set up analyser for visualization (separate from the capture node)
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       source.connect(analyser);
       analyser.fftSize = 256;
       analyserRef.current = analyser;
 
-      // TODO: Connect to Google Live API
-      // For now, simulate connection
-      setTimeout(() => {
-        setStatus('active');
-        setDuration(0);
+      const systemPrompt = `You are a friendly, patient language tutor having a real-time voice conversation with a language learner practicing Spanish.
 
-        // Add welcome message
-        setTranscript([{
-          role: 'assistant',
-          content: '¡Hola! Pick a scenario to practice: (1) Café order, (2) Restaurant, (3) Meeting a friend. Say 1, 2, or 3!',
-          timestamp: new Date().toISOString(),
-        }]);
-      }, 1500);
-    } catch (err: any) {
+Your role:
+- Speak naturally in Spanish, keeping vocabulary appropriate for learners
+- Gently correct major grammar or vocabulary mistakes in a warm, encouraging way
+- Keep conversations engaging and fun
+- If the user tells you a scenario (café, restaurant, meeting people, etc.), role-play that scenario naturally
+- Keep responses concise — 2 to 4 sentences — since this is spoken conversation
+- Occasionally introduce new vocabulary naturally in context
+
+Start by greeting the user warmly in Spanish and inviting them to choose what they'd like to practice today.`;
+
+      geminiLive.connect(stream, audioContext, systemPrompt);
+    } catch (err: unknown) {
       console.error('Failed to start call:', err);
-      if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+      const domErr = err as { name?: string };
+      if (domErr?.name === 'NotAllowedError' || domErr?.name === 'PermissionDeniedError') {
         setError('mic-denied');
       } else {
         setError('connection-lost');
@@ -158,6 +154,19 @@ export function VoiceCall({ onEnd }: VoiceCallProps) {
 
   const handleEndCall = async () => {
     setStatus('ended');
+
+    // Disconnect from Gemini Live API
+    geminiLive.disconnect();
+
+    // Stop mic tracks and close audio context
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
 
     // End trial session
     endTrial();
@@ -200,12 +209,10 @@ export function VoiceCall({ onEnd }: VoiceCallProps) {
     setScenario(selected?.name || null);
     setShowScenarioPicker(false);
 
-    // Add scenario start message
-    setTranscript((prev) => [...prev, {
-      role: 'assistant',
-      content: `Great choice! Let's practice "${selected?.name}". I'll be your conversation partner. Start whenever you're ready!`,
-      timestamp: new Date().toISOString(),
-    }]);
+    // Tell Gemini to start the chosen scenario
+    geminiLive.sendTextMessage(
+      `Let's practice this scenario: "${selected?.name}". Please set the scene and start the role-play in Spanish.`
+    );
   };
 
   const addCorrection = (correction: Correction) => {
@@ -386,40 +393,19 @@ export function VoiceCall({ onEnd }: VoiceCallProps) {
         {/* Action Chips */}
         <div className="flex gap-2 flex-wrap justify-center">
           <button
-            onClick={() => {
-              // TODO: Implement translate last
-              setTranscript((prev) => [...prev, {
-                role: 'assistant',
-                content: 'Last message translation would appear here...',
-                timestamp: new Date().toISOString(),
-              }]);
-            }}
+            onClick={() => geminiLive.sendTextMessage('Please translate your last message into English.')}
             className="px-4 py-2 rounded-full bg-white/5 text-sm text-white/80 hover:bg-white/10"
           >
             Translate last
           </button>
           <button
-            onClick={() => {
-              // TODO: Implement slow down
-              setTranscript((prev) => [...prev, {
-                role: 'assistant',
-                content: 'Of course, I can speak more slowly...',
-                timestamp: new Date().toISOString(),
-              }]);
-            }}
+            onClick={() => geminiLive.sendTextMessage('Please repeat that more slowly and clearly.')}
             className="px-4 py-2 rounded-full bg-white/5 text-sm text-white/80 hover:bg-white/10"
           >
             Slow down
           </button>
           <button
-            onClick={() => {
-              // TODO: Implement repeat
-              setTranscript((prev) => [...prev, {
-                role: 'assistant',
-                content: 'Let me repeat that...',
-                timestamp: new Date().toISOString(),
-              }]);
-            }}
+            onClick={() => geminiLive.sendTextMessage('Please repeat your last message.')}
             className="px-4 py-2 rounded-full bg-white/5 text-sm text-white/80 hover:bg-white/10"
           >
             Repeat

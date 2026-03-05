@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth';
 import { BottomNav } from '@/components/bottom-nav';
+import { Sidebar } from '@/components/sidebar';
 
 export default async function AppLayout({
   children,
@@ -9,15 +10,14 @@ export default async function AppLayout({
 }) {
   const user = await getUser();
 
-  // If no user, middleware should have redirected to login
-  // But this is a safety check
   if (!user) {
     redirect('/login');
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <main className="pb-20">
+      <Sidebar />
+      <main className="pb-20 md:pb-0 md:ml-[220px]">
         {children}
       </main>
       <BottomNav />

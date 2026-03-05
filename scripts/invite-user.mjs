@@ -2,10 +2,16 @@
  * Script to invite a new user
  *
  * Usage:
+ *   # Specific user:
  *   node scripts/invite-user.mjs <email> <name>
  *
- * Example:
+ *   # Generic link (anyone can claim):
+ *   node scripts/invite-user.mjs --generic
+ *   node scripts/invite-user.mjs -g
+ *
+ * Examples:
  *   node scripts/invite-user.mjs friend@example.com "John Doe"
+ *   node scripts/invite-user.mjs --generic
  *
  * Prerequisites:
  *   - NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local
@@ -39,6 +45,37 @@ function generateToken() {
   return randomBytes(32).toString('base64url');
 }
 
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000';
+}
+
+async function createGenericInvite() {
+  const inviteToken = generateToken();
+
+  const { error: insertError } = await supabase
+    .from('invited_users')
+    .insert({
+      email: null,
+      name: null,
+      invite_token: inviteToken,
+      is_generic: true,
+    });
+
+  if (insertError) {
+    console.error(`\n  ✗ Failed to create generic invite: ${insertError.message}\n`);
+    process.exit(1);
+  }
+
+  const baseUrl = getBaseUrl();
+  const inviteUrl = `${baseUrl}/invite/${inviteToken}`;
+
+  console.log(`\n  ✓ Created generic invite link`);
+  console.log(`\n  Invite URL: ${inviteUrl}`);
+  console.log(`\n  Anyone with this link can enter their name/email to get whitelisted.\n`);
+}
+
 async function inviteUser(email, name) {
   const normalizedEmail = email.toLowerCase().trim();
 
@@ -55,9 +92,7 @@ async function inviteUser(email, name) {
   }
 
   if (existing) {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
 
     if (existing.accepted_at) {
       console.log(`\n  ✓ ${email} already accepted invite`);
@@ -80,6 +115,7 @@ async function inviteUser(email, name) {
       email: normalizedEmail,
       name,
       invite_token: inviteToken,
+      is_generic: false,
     });
 
   if (insertError) {
@@ -87,9 +123,7 @@ async function inviteUser(email, name) {
     process.exit(1);
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000';
+  const baseUrl = getBaseUrl();
   const inviteUrl = `${baseUrl}/invite/${inviteToken}`;
 
   console.log(`\n  ✓ Invited ${email} (${name})`);
@@ -98,11 +132,19 @@ async function inviteUser(email, name) {
 
 // CLI usage
 const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.log('\n  Usage: node scripts/invite-user.mjs <email> <name>');
-  console.log('  Example: node scripts/invite-user.mjs user@example.com "John Doe"\n');
-  process.exit(1);
-}
 
-const [email, name] = args;
-inviteUser(email, name);
+// Check for generic flag
+if (args.includes('--generic') || args.includes('-g')) {
+  createGenericInvite();
+} else if (args.length < 2) {
+  console.log('\n  Usage:');
+  console.log('    node scripts/invite-user.mjs <email> <name>');
+  console.log('    node scripts/invite-user.mjs --generic  (or -g)');
+  console.log('\n  Examples:');
+  console.log('    node scripts/invite-user.mjs user@example.com "John Doe"');
+  console.log('    node scripts/invite-user.mjs --generic\n');
+  process.exit(1);
+} else {
+  const [email, name] = args;
+  inviteUser(email, name);
+}

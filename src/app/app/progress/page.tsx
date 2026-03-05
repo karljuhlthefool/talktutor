@@ -60,7 +60,7 @@ export default function ProgressPage() {
   const maxMinutes = Math.max(...weeklyData.map(d => d.secondsSpoken / 60), 15);
 
   return (
-    <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6">
+    <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6 md:py-8 md:max-w-2xl md:mx-auto">
       <h1 className="text-xl font-semibold tracking-tight mb-6">Progress</h1>
 
       {loading ? (

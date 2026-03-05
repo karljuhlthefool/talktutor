@@ -270,8 +270,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .selection-card[data-selected="true"] {
-  background: oklch(0.65 0.16 250 / 0.1);
-  border-color: oklch(0.65 0.16 250 / 0.3);
+  background: oklch(0.65 0.16 250 / 0.12);
+  border-color: oklch(0.65 0.16 250 / 0.4);
+  box-shadow: 0 0 0 1px oklch(0.65 0.16 250 / 0.08);
 }
 
 /* ── Button press feedback ── */
@@ -312,4 +313,35 @@ button:active:not(:disabled) {
   border-radius: inherit;
   background: var(--primary);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Desktop overrides (md: 768px+) ── */
+
+@media (min-width: 768px) {
+  .bubble {
+    max-width: 72%;
+  }
+
+  /* Disable button press scale on desktop — feels wrong with mouse */
+  button:active:not(:disabled) {
+    transform: none;
+  }
+
+  /* Sheet becomes centered dialog on desktop */
+  .sheet-content {
+    position: fixed;
+    bottom: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 420px;
+    border-radius: 16px;
+    animation: dialog-in 0.2s ease forwards;
+  }
+
+  @keyframes dialog-in {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
 }

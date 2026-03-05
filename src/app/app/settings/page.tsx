@@ -28,7 +28,10 @@ function Sheet({
         className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl sheet-content"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+        <div className="flex justify-center pt-3 pb-1 md:hidden">
+          <div className="w-8 h-1 rounded-full bg-border" />
+        </div>
+        <div className="flex items-center justify-between px-5 pt-2 pb-3">
           <h3 className="text-lg font-semibold">{title}</h3>
           <button
             onClick={onClose}
@@ -108,7 +111,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6">
+      <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6 md:py-8 md:max-w-lg md:mx-auto">
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-16 skeleton rounded-xl" />
@@ -119,7 +122,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6">
+    <div className="min-h-[calc(100dvh-5rem)] bg-background px-5 py-6 md:py-8 md:max-w-lg md:mx-auto">
       <h1 className="text-xl font-semibold tracking-tight mb-6">Settings</h1>
 
       <div className="space-y-1.5">

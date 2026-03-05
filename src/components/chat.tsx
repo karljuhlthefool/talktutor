@@ -108,9 +108,9 @@ export function Chat() {
   const hasInput = input.trim().length > 0;
 
   return (
-    <div className="flex flex-col h-dvh">
+    <div className="flex flex-col h-dvh md:h-screen">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 space-y-3 md:max-w-3xl md:mx-auto md:w-full">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-8 pb-4">
             <div className="text-center space-y-1">
@@ -167,7 +167,7 @@ export function Chat() {
 
       {/* Input area */}
       <div className="border-t border-border bg-card/50 backdrop-blur-sm">
-        <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-3">
+        <form onSubmit={handleSubmit} className="flex items-end gap-2 px-3 py-3 md:max-w-3xl md:mx-auto md:w-full md:px-6">
           <Textarea
             ref={textareaRef}
             value={input}

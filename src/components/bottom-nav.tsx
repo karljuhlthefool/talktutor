@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border md:hidden">
       <div className="max-w-lg mx-auto flex justify-around items-center h-14 px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href === '/app' && pathname === '/app/chat');
