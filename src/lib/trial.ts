@@ -3,6 +3,10 @@
  * Limits free voice sessions to 1-2 minutes without login
  */
 
+// Toggle to enable/disable trial mode
+// Set to false to require login for all usage
+export const TRIAL_ENABLED = false;
+
 const TRIAL_LIMIT_SECONDS = 90; // 1.5 minutes
 const TRIAL_STORAGE_KEY = 'talktutor_trial';
 
@@ -14,6 +18,11 @@ export interface TrialState {
 }
 
 export function getTrialState(): TrialState {
+  // If trial is disabled, always return as used/expired
+  if (!TRIAL_ENABLED) {
+    return { isTrial: false, used: true, remaining: 0, expired: true };
+  }
+
   if (typeof window === 'undefined') {
     return { isTrial: false, used: false, remaining: 0, expired: false };
   }
