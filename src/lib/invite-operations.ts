@@ -189,7 +189,7 @@ export async function claimGenericInvite(
     return { success: false, error: 'This invite link has already been used' };
   }
 
-  // Check if email is already whitelisted (but allow them to proceed)
+  // Check if email is already in the invited_users table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existingInvite } = await (supabaseAdmin as any)
     .from('invited_users')
@@ -202,19 +202,25 @@ export async function claimGenericInvite(
     return { success: false, error: 'This email is already registered. Please log in instead.' };
   }
 
-  // Claim the invite by updating email, name, and claimed_at
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: updateError } = await (supabaseAdmin as any)
-    .from('invited_users')
-    .update({
-      email: normalizedEmail,
-      name,
-      claimed_at: new Date().toISOString(),
-    })
-    .eq('id', invite.id);
+  // If email already exists (claimed but not accepted), just proceed - email is already whitelisted
+  // No need to update the invite row since that would violate the unique constraint
+  let shouldUpdateInvite = !existingInvite;
 
-  if (updateError) {
-    return { success: false, error: updateError.message };
+  if (shouldUpdateInvite) {
+    // Claim the invite by updating email, name, and claimed_at
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabaseAdmin as any)
+      .from('invited_users')
+      .update({
+        email: normalizedEmail,
+        name,
+        claimed_at: new Date().toISOString(),
+      })
+      .eq('id', invite.id);
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
   }
 
   // Create or get the auth user and generate a session
